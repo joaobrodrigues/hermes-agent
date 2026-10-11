@@ -169,11 +169,23 @@ function sendWithTimeout(chatId, payload, options = {}, timeoutMs = SEND_TIMEOUT
   );
 }
 
-function formatOutgoingMessage(message) {
+// Local change (hermes-jbr): in bot mode, group replies get a visible agent name
+// so members can tell who is answering. Direct messages are left untouched.
+// Override the text with WHATSAPP_GROUP_REPLY_PREFIX; set it to an empty string to disable.
+const GROUP_REPLY_PREFIX = process.env.WHATSAPP_GROUP_REPLY_PREFIX === undefined
+  ? '*Ambrósio:* '
+  : process.env.WHATSAPP_GROUP_REPLY_PREFIX.replace(/\\n/g, '\n');
+
+function formatOutgoingMessage(message, chatId = '') {
   // In bot mode, messages come from a different number so the prefix is
   // redundant — the sender identity is already clear.  Only prepend in
   // self-chat mode where bot and user share the same number.
-  if (WHATSAPP_MODE !== 'self-chat') return message;
+  if (WHATSAPP_MODE !== 'self-chat') {
+    if (GROUP_REPLY_PREFIX && String(chatId).endsWith('@g.us')) {
+      return `${GROUP_REPLY_PREFIX}${message}`;
+    }
+    return message;
+  }
   return REPLY_PREFIX ? `${REPLY_PREFIX}${message}` : message;
 }
 
@@ -849,7 +861,7 @@ app.post('/send', async (req, res) => {
   }
 
   try {
-    const chunks = splitLongMessage(formatOutgoingMessage(message));
+    const chunks = splitLongMessage(formatOutgoingMessage(message, chatId));
     const messageIds = [];
     for (let i = 0; i < chunks.length; i += 1) {
       const { content: payload, options } = buildTextSendPayload(chunks[i], {
@@ -890,7 +902,7 @@ app.post('/edit', async (req, res) => {
 
   try {
     const key = { id: messageId, fromMe: true, remoteJid: chatId };
-    const chunks = splitLongMessage(formatOutgoingMessage(message));
+    const chunks = splitLongMessage(formatOutgoingMessage(message, chatId));
     const messageIds = [];
 
     await sendWithTimeout(chatId, { text: chunks[0], edit: key });
