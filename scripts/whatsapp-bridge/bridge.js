@@ -579,11 +579,8 @@ async function startSocket() {
             isGroup: true,
             groupAllowlistMatches: (id) => matchesAllowedUser(id, GROUP_ALLOWED_USERS, SESSION_DIR),
           });
-          if (groupDecision.action === 'forward_owner') {
-            fromOwner = true;
-          } else {
-            continue;
-          }
+          if (groupDecision.action !== 'forward_owner') continue;
+          fromOwner = true;
         } else if (isGroup || chatId.includes('status')) {
           emitDebugEvent({
             stage: 'ignored',
@@ -591,9 +588,7 @@ async function startSocket() {
             chatId: redactWhatsAppId(chatId),
           });
           continue;
-        }
-
-        if (WHATSAPP_MODE === 'bot') {
+        } else if (WHATSAPP_MODE === 'bot') {
           // Bot mode: separate bot number. fromMe inbound is either
           //   (a) an echo of our own /send (recentlySentIds will catch it), or
           //   (b) a message the owner typed from their own phone using the
