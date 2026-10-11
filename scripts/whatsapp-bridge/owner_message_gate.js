@@ -34,6 +34,8 @@ export function classifyOwnerMessageGate({
   allowlistMatches,
   messageId,
   chatId,
+  isGroup = false,
+  groupAllowlistMatches,
 }) {
   if (!fromMe) {
     return { action: 'pass' };
@@ -43,6 +45,14 @@ export function classifyOwnerMessageGate({
   }
   if (!fromOwnerEnabled) {
     return { action: 'drop_disabled' };
+  }
+  // Local change (hermes-jbr): owner-typed messages in a group are forwarded only when
+  // that exact group is on the group allowlist. Other groups stay dropped.
+  if (isGroup) {
+    if (typeof groupAllowlistMatches === 'function' && groupAllowlistMatches(chatId)) {
+      return { action: 'forward_owner' };
+    }
+    return { action: 'drop_group' };
   }
   // Allowlist gate: check the *customer* chatId, not the sender. The
   // sender is the owner's own number/LID and won't be on the allowlist

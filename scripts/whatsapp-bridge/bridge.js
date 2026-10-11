@@ -567,7 +567,24 @@ async function startSocket() {
       // Handle fromMe messages based on mode
       let fromOwner = false;
       if (msg.key.fromMe) {
-        if (isGroup || chatId.includes('status')) {
+        // Local change (hermes-jbr): owner-typed group messages go through the same gate as DMs,
+        // checked against the group allowlist (see owner_message_gate.js, isGroup branch).
+        if (isGroup && WHATSAPP_MODE === 'bot') {
+          const groupDecision = classifyOwnerMessageGate({
+            fromMe: true,
+            fromOwnerEnabled: FORWARD_OWNER_MESSAGES,
+            recentlySent: recentlySentIds,
+            messageId: msg.key.id,
+            chatId,
+            isGroup: true,
+            groupAllowlistMatches: (id) => matchesAllowedUser(id, GROUP_ALLOWED_USERS, SESSION_DIR),
+          });
+          if (groupDecision.action === 'forward_owner') {
+            fromOwner = true;
+          } else {
+            continue;
+          }
+        } else if (isGroup || chatId.includes('status')) {
           emitDebugEvent({
             stage: 'ignored',
             reason: isGroup ? 'from_me_group' : 'from_me_status',

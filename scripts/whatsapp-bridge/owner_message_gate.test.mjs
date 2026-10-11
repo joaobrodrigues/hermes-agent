@@ -124,3 +124,30 @@ test('disabled flag fires before allowlist check', () => {
   });
   assert.deepEqual(decision, { action: 'drop_disabled' });
 });
+
+test('group: owner message in an allowlisted group is forwarded', () => {
+  const r = classifyOwnerMessageGate({
+    fromMe: true, fromOwnerEnabled: true, recentlySent: makeRecentlySent(),
+    allowlistMatches: () => false, messageId: 'g1', chatId: '120363043702224786@g.us',
+    isGroup: true, groupAllowlistMatches: (id) => id === '120363043702224786@g.us',
+  });
+  assert.equal(r.action, 'forward_owner');
+});
+
+test('group: owner message in a non-allowlisted group is dropped', () => {
+  const r = classifyOwnerMessageGate({
+    fromMe: true, fromOwnerEnabled: true, recentlySent: makeRecentlySent(),
+    allowlistMatches: () => false, messageId: 'g2', chatId: '999@g.us',
+    isGroup: true, groupAllowlistMatches: () => false,
+  });
+  assert.equal(r.action, 'drop_group');
+});
+
+test('group: echo of a recent send is still dropped', () => {
+  const r = classifyOwnerMessageGate({
+    fromMe: true, fromOwnerEnabled: true, recentlySent: makeRecentlySent(['g3']),
+    allowlistMatches: () => true, messageId: 'g3', chatId: '120363043702224786@g.us',
+    isGroup: true, groupAllowlistMatches: () => true,
+  });
+  assert.equal(r.action, 'drop_echo');
+});
